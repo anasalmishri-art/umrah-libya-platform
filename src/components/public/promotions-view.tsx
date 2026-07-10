@@ -47,13 +47,13 @@ export function PromotionsView() {
                     {promo.discountType === "PERCENTAGE" ? (
                       <><Percent className="ml-1 h-3 w-3" />{promo.discountValue}%</>
                     ) : (
-                      <>{promo.discountValue} ر.س</>
+                      <>{promo.discountValue} د.ل</>
                     )}
                   </Badge>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-extrabold text-accent-foreground">
-                    {promo.discountType === "PERCENTAGE" ? `${promo.discountValue}%` : `${promo.discountValue} ر.س`}
+                    {promo.discountType === "PERCENTAGE" ? `${promo.discountValue}%` : `${promo.discountValue} د.ل`}
                   </div>
                   <div className="text-xs text-accent-foreground/70 mt-1">خصم</div>
                 </div>

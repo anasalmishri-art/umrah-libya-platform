@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +36,7 @@ export function AuthModals() {
 
 function LoginModal({ open, onClose, onSwitchToRegister }: { open: boolean; onClose: () => void; onSwitchToRegister: () => void }) {
   const { login } = useAuth();
+  const { setView } = useAppStore();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,11 +46,19 @@ function LoginModal({ open, onClose, onSwitchToRegister }: { open: boolean; onCl
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      const result = await login(email, password);
       toast({ title: "تم تسجيل الدخول بنجاح", description: "مرحباً بك في منصة عمرة" });
-      onClose();
       setEmail("");
       setPassword("");
+
+      // تحويل تلقائي للوحة التحكم المناسبة حسب الدور
+      const role = result.user?.role;
+      if (role === "SUPER_ADMIN") {
+        setView("admin-dashboard");
+      } else if (role === "COMPANY") {
+        setView("company-dashboard");
+      }
+      onClose();
     } catch (e: any) {
       toast({ title: "فشل تسجيل الدخول", description: e.message, variant: "destructive" });
     } finally {
@@ -79,7 +89,7 @@ function LoginModal({ open, onClose, onSwitchToRegister }: { open: boolean; onCl
               dir="ltr"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@umrah.com"
+              placeholder="admin@umrah.ly"
               className="text-right"
             />
           </div>
@@ -116,8 +126,8 @@ function LoginModal({ open, onClose, onSwitchToRegister }: { open: boolean; onCl
         <div className="bg-secondary/30 rounded-lg p-3 text-xs text-muted-foreground">
           <div className="font-semibold text-foreground mb-1">حسابات تجريبية:</div>
           <div className="space-y-0.5" dir="ltr">
-            <div>Admin: admin@umrah.com / admin123</div>
-            <div>Company: company@umrah.com / company123</div>
+            <div>Admin: admin@umrah.ly / admin123</div>
+            <div>Company: company@umrah.ly / company123</div>
           </div>
         </div>
       </DialogContent>
@@ -146,7 +156,7 @@ function RegisterModal({ open, onClose, onSwitchToLogin }: { open: boolean; onCl
     companyEmail: "",
     address: "",
     city: "",
-    country: "السعودية",
+    country: "ليبيا",
     website: "",
   });
 
@@ -209,14 +219,14 @@ function RegisterModal({ open, onClose, onSwitchToLogin }: { open: boolean; onCl
                   <Label className="mb-1.5 flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5" /> رقم الهاتف *
                   </Label>
-                  <Input required dir="ltr" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+966 5XX XXX XXX" className="text-right" />
+                  <Input required dir="ltr" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+218 91XXX XXX / +218 92XXX XXX" className="text-right" />
                 </div>
               </div>
               <div>
                 <Label className="mb-1.5 flex items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5" /> البريد الإلكتروني *
                 </Label>
-                <Input required type="email" dir="ltr" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="company@example.com" className="text-right" />
+                <Input required type="email" dir="ltr" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="company@example.ly" className="text-right" />
               </div>
               <div>
                 <Label className="mb-1.5 flex items-center gap-1.5">
@@ -251,13 +261,13 @@ function RegisterModal({ open, onClose, onSwitchToLogin }: { open: boolean; onCl
                   <Label className="mb-1.5 flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5" /> هاتف الشركة *
                   </Label>
-                  <Input required dir="ltr" value={form.companyPhone} onChange={(e) => set("companyPhone", e.target.value)} placeholder="+966 5XX XXX XXX" className="text-right" />
+                  <Input required dir="ltr" value={form.companyPhone} onChange={(e) => set("companyPhone", e.target.value)} placeholder="+218 91XXX XXX" className="text-right" />
                 </div>
                 <div>
                   <Label className="mb-1.5 flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5" /> واتساب
                   </Label>
-                  <Input dir="ltr" value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="+966 5XX XXX XXX" className="text-right" />
+                  <Input dir="ltr" value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="+218 91XXX XXX" className="text-right" />
                 </div>
               </div>
 
@@ -266,7 +276,7 @@ function RegisterModal({ open, onClose, onSwitchToLogin }: { open: boolean; onCl
                   <Label className="mb-1.5 flex items-center gap-1.5">
                     <Mail className="h-3.5 w-3.5" /> بريد الشركة
                   </Label>
-                  <Input type="email" dir="ltr" value={form.companyEmail} onChange={(e) => set("companyEmail", e.target.value)} placeholder="info@company.com" className="text-right" />
+                  <Input type="email" dir="ltr" value={form.companyEmail} onChange={(e) => set("companyEmail", e.target.value)} placeholder="info@company.ly" className="text-right" />
                 </div>
                 <div>
                   <Label className="mb-1.5 flex items-center gap-1.5">
@@ -281,13 +291,32 @@ function RegisterModal({ open, onClose, onSwitchToLogin }: { open: boolean; onCl
                   <Label className="mb-1.5 flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" /> المدينة *
                   </Label>
-                  <Input required value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="مكة المكرمة" />
+                  <Select value={form.city} onValueChange={(v) => set("city", v)}>
+                    <SelectTrigger><SelectValue placeholder="اختر المدينة" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="طرابلس">طرابلس</SelectItem>
+                      <SelectItem value="بنغازي">بنغازي</SelectItem>
+                      <SelectItem value="مصراتة">مصراتة</SelectItem>
+                      <SelectItem value="الزاوية">الزاوية</SelectItem>
+                      <SelectItem value="زليتن">زليتن</SelectItem>
+                      <SelectItem value="صبراتة">صبراتة</SelectItem>
+                      <SelectItem value="الخمس">الخمس</SelectItem>
+                      <SelectItem value="سبها">سبها</SelectItem>
+                      <SelectItem value="البيضاء">البيضاء</SelectItem>
+                      <SelectItem value="طبرق">طبرق</SelectItem>
+                      <SelectItem value="درنة">درنة</SelectItem>
+                      <SelectItem value="ترهونة">ترهونة</SelectItem>
+                      <SelectItem value="غريان">غريان</SelectItem>
+                      <SelectItem value="صحيلا">صحيلا</SelectItem>
+                      <SelectItem value="أوباري">أوباري</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label className="mb-1.5 flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" /> الدولة
                   </Label>
-                  <Input value={form.country} onChange={(e) => set("country", e.target.value)} placeholder="السعودية" />
+                  <Input value={form.country} onChange={(e) => set("country", e.target.value)} placeholder="ليبيا" />
                 </div>
               </div>
 

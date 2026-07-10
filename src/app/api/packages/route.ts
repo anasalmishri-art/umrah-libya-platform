@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         durationDays: parseInt(body.durationDays) || 7,
         price: parseFloat(body.price) || 0,
         oldPrice: body.oldPrice ? parseFloat(body.oldPrice) : null,
-        currency: body.currency || "SAR",
+        currency: body.currency || "LYD",
         hotelStars: parseInt(body.hotelStars) || 3,
         hotelName: body.hotelName || null,
         includesTransport: !!body.includesTransport,

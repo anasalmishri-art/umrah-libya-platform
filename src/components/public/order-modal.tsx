@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAppStore } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { MessageCircle, User, Phone, Mail, Users, FileText, CheckCircle2, ArrowLeft } from "lucide-react";
+import { getCurrencySymbol } from "@/lib/currency";
 
 export function OrderModal() {
   const { authModal, selectedPackageForOrder, closeModals } = useAppStore();
@@ -82,7 +83,7 @@ export function OrderModal() {
 ${form.customerEmail ? `- البريد: ${form.customerEmail}` : ""}
 - عدد الأشخاص: ${form.numPersons}
 
-💰 *الإجمالي:* ${order.totalPrice.toLocaleString()} ${order.currency}
+💰 *الإجمالي:* ${order.totalPrice.toLocaleString()} ${getCurrencySymbol(order.currency)}
 ${form.notes ? `\n📝 *ملاحظات:* ${form.notes}` : ""}
 
 أرجو تأكيد الحجز وطريقة الدفع. شكراً لكم.`;
@@ -152,7 +153,7 @@ ${form.notes ? `\n📝 *ملاحظات:* ${form.notes}` : ""}
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">الإجمالي:</span>
                 <span className="font-bold text-primary text-lg">
-                  {successOrder.totalPrice.toLocaleString()} {successOrder.currency}
+                  {successOrder.totalPrice.toLocaleString()} {getCurrencySymbol(successOrder.currency)}
                 </span>
               </div>
             </div>
@@ -185,13 +186,13 @@ ${form.notes ? `\n📝 *ملاحظات:* ${form.notes}` : ""}
               </div>
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-muted-foreground">سعر الفرد:</span>
-                <span className="font-medium">{pkg.price.toLocaleString()} {pkg.currency}</span>
+                <span className="font-medium">{pkg.price.toLocaleString()} {getCurrencySymbol(pkg.currency)}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">الإجمالي التقديري:</span>
                 <span className="font-bold text-primary text-lg">
-                  {totalPrice.toLocaleString()} {pkg.currency}
+                  {totalPrice.toLocaleString()} {getCurrencySymbol(pkg.currency)}
                 </span>
               </div>
             </div>

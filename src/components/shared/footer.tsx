@@ -49,22 +49,22 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-primary" />
-                <span dir="ltr">+966 50 000 0000</span>
+                <span dir="ltr">+218 91 000 0000</span>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-primary" />
-                <span>info@umrah-platform.com</span>
+                <span>info@umrah-platform.ly</span>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
-                <span>الرياض، المملكة العربية السعودية</span>
+                <span>طرابلس، ليبيا</span>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-8 pt-6 border-t border-border/40 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <p>© 2026 منصة عمرة. جميع الحقوق محفوظة.</p>
+          <p>© 2026 منصة عمرة ليبيا. جميع الحقوق محفوظة.</p>
           <div className="flex items-center gap-4">
             <button className="hover:text-primary">سياسة الخصوصية</button>
             <button className="hover:text-primary">الشروط والأحكام</button>

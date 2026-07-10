@@ -9,6 +9,7 @@ import { useAppStore } from "@/lib/store";
 import { useFetch } from "@/hooks/use-fetch";
 import { Star, Clock, Users, MapPin, Plane, Utensils, Compass, Calendar, Building2, Phone, CheckCircle2, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrencySymbol } from "@/lib/currency";
 
 const typeLabels: Record<string, string> = {
   UMRAH: "عمرة", HAJJ: "حج", COMBINED: "عمرة وحج", RAMADAN: "عمرة رمضان",
@@ -156,12 +157,12 @@ function PackageDetailContent({ pkg, onBook }: { pkg: any; onBook: () => void })
           <div>
             {pkg.oldPrice && (
               <div className="text-sm text-muted-foreground line-through">
-                {pkg.oldPrice.toLocaleString()} {pkg.currency}
+                {pkg.oldPrice.toLocaleString()} {getCurrencySymbol(pkg.currency)}
               </div>
             )}
             <div className="text-3xl font-extrabold text-primary">
               {pkg.price.toLocaleString()}
-              <span className="text-base font-normal mr-1"> {pkg.currency}</span>
+              <span className="text-base font-normal mr-1"> {getCurrencySymbol(pkg.currency)}</span>
             </div>
             <div className="text-xs text-muted-foreground">السعر للفرد الواحد</div>
           </div>

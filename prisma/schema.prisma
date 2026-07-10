@@ -38,7 +38,7 @@ model Company {
   email           String?
   address         String?
   city            String?
-  country         String  @default("السعودية")
+  country         String  @default("ليبيا")
   website         String?
 
   status          String   @default("PENDING") // PENDING | APPROVED | REJECTED | SUSPENDED
@@ -62,7 +62,7 @@ model Package {
   durationDays    Int
   price           Float
   oldPrice        Float?   // for discount display
-  currency        String   @default("SAR")
+  currency        String   @default("LYD")
 
   hotelStars      Int      @default(3)
   hotelName       String?
@@ -106,7 +106,7 @@ model Order {
   notes           String?
 
   totalPrice      Float
-  currency        String   @default("SAR")
+  currency        String   @default("LYD")
 
   status          String   @default("PENDING_PAYMENT") // PENDING_PAYMENT | PAID | CANCELLED | COMPLETED
   paymentMethod   String   @default("WHATSAPP")

@@ -35,9 +35,9 @@ export function ContactView() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <ContactCard icon={Phone} title="اتصل بنا" lines={["+966 50 000 0000", "متاح يومياً 9ص - 9م"]} />
-          <ContactCard icon={MessageCircle} title="واتساب" lines={["+966 50 000 0000", "للاستفسارات السريعة"]} />
-          <ContactCard icon={Mail} title="البريد الإلكتروني" lines={["info@umrah-platform.com", "للاستفسارات الرسمية"]} />
+          <ContactCard icon={Phone} title="اتصل بنا" lines={["+218 91 000 0000", "متاح يومياً 9ص - 9م"]} />
+          <ContactCard icon={MessageCircle} title="واتساب" lines={["+218 91 000 0000", "للاستفسارات السريعة"]} />
+          <ContactCard icon={Mail} title="البريد الإلكتروني" lines={["info@umrah-platform.ly", "للاستفسارات الرسمية"]} />
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -95,9 +95,9 @@ export function ContactView() {
             <CardContent className="p-6">
               <h2 className="text-xl font-bold mb-4 text-primary">معلومات التواصل</h2>
               <div className="space-y-5">
-                <InfoRow icon={MapPin} title="العنوان" content="الرياض، المملكة العربية السعودية" />
-                <InfoRow icon={Phone} title="الهاتف" content="+966 50 000 0000" />
-                <InfoRow icon={Mail} title="البريد الإلكتروني" content="info@umrah-platform.com" />
+                <InfoRow icon={MapPin} title="العنوان" content="طرابلس، ليبيا" />
+                <InfoRow icon={Phone} title="الهاتف" content="+218 91 000 0000" />
+                <InfoRow icon={Mail} title="البريد الإلكتروني" content="info@umrah-platform.ly" />
                 <InfoRow icon={Clock} title="ساعات العمل" content="السبت - الخميس: 9 صباحاً - 9 مساءً" />
               </div>
               <div className="mt-6 pt-6 border-t border-border/40">

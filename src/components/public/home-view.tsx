@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Star, Sparkles, Shield, Users, Building2, ArrowLeft, Plane, MapPin, Calendar, Tag, TrendingUp, Award, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrencySymbol } from "@/lib/currency";
 
 export function HomeView() {
   const { setView, openPackageDetail } = useAppStore();
@@ -264,11 +265,11 @@ function FeaturedPackageCard({ pkg, onOpen }: { pkg: any; onOpen: () => void }) 
           <div>
             {pkg.oldPrice && (
               <div className="text-xs text-muted-foreground line-through">
-                {pkg.oldPrice.toLocaleString()} {pkg.currency}
+                {pkg.oldPrice.toLocaleString()} {getCurrencySymbol(pkg.currency)}
               </div>
             )}
             <div className="text-lg font-extrabold text-primary">
-              {pkg.price.toLocaleString()} <span className="text-xs">{pkg.currency}</span>
+              {pkg.price.toLocaleString()} <span className="text-xs">{getCurrencySymbol(pkg.currency)}</span>
             </div>
           </div>
           <Button size="sm" onClick={onOpen} className="bg-primary hover:bg-primary/90">

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Star, Clock, Users, MapPin, Plane, Utensils, Compass, Calendar, Search, Sparkles, Tag, Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrencySymbol } from "@/lib/currency";
 
 interface Package {
   id: string;
@@ -235,11 +236,11 @@ function PackageCard({ pkg, onOpen }: { pkg: Package; onOpen: () => void }) {
         <div>
           {pkg.oldPrice && (
             <div className="text-xs text-muted-foreground line-through">
-              {pkg.oldPrice.toLocaleString()} {pkg.currency}
+              {pkg.oldPrice.toLocaleString()} {getCurrencySymbol(pkg.currency)}
             </div>
           )}
           <div className="text-xl font-extrabold text-primary">
-            {pkg.price.toLocaleString()} <span className="text-sm font-normal">{pkg.currency}</span>
+            {pkg.price.toLocaleString()} <span className="text-sm font-normal">{getCurrencySymbol(pkg.currency)}</span>
           </div>
         </div>
         <Button onClick={onOpen} size="sm" className="bg-primary hover:bg-primary/90">

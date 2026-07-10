@@ -20,6 +20,7 @@ import {
   LayoutDashboard, FileText, Calendar, ArrowRight, AlertCircle, BadgeCheck,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrencySymbol } from "@/lib/currency";
 
 type TabKey = "overview" | "companies" | "packages" | "orders" | "promotions" | "settings";
 
@@ -92,7 +93,7 @@ function OverviewTab() {
         <StatCard icon={Building2} label="إجمالي الشركات" value={data.totalCompanies} sub={`${data.pendingCompanies} قيد المراجعة`} color="primary" />
         <StatCard icon={Package} label="إجمالي الباقات" value={data.totalPackages} sub={`${data.approvedCompanies} شركة فعّالة`} color="accent" />
         <StatCard icon={ShoppingCart} label="إجمالي الطلبات" value={data.totalOrders} sub={`${data.pendingPaymentOrders} بانتظار الدفع`} color="chart-3" />
-        <StatCard icon={DollarSign} label="إجمالي الإيرادات" value={`${data.totalRevenue.toLocaleString()} ر.س`} sub={`${data.paidOrders} طلب مدفوع`} color="chart-4" />
+        <StatCard icon={DollarSign} label="إجمالي الإيرادات" value={`${data.totalRevenue.toLocaleString()} د.ل`} sub={`${data.paidOrders} طلب مدفوع`} color="chart-4" />
       </div>
 
       {/* Quick stats */}
@@ -152,7 +153,7 @@ function OverviewTab() {
                     <div className="font-medium text-sm">{c.name}</div>
                     <div className="text-xs text-muted-foreground">{c.orders} طلب</div>
                   </div>
-                  <div className="font-bold text-primary">{c.revenue.toLocaleString()} ر.س</div>
+                  <div className="font-bold text-primary">{c.revenue.toLocaleString()} د.ل</div>
                 </div>
               ))}
             </div>
@@ -370,7 +371,7 @@ function PackagesTab() {
                   {p.isActive ? <Badge className="bg-green-100 text-green-700">فعّالة</Badge> : <Badge className="bg-muted text-muted-foreground">موقوفة</Badge>}
                 </div>
                 <div className="text-xs text-muted-foreground mb-2">{p.company?.name}</div>
-                <div className="text-lg font-bold text-primary mb-1">{p.price.toLocaleString()} {p.currency}</div>
+                <div className="text-lg font-bold text-primary mb-1">{p.price.toLocaleString()} {getCurrencySymbol(p.currency)}</div>
                 <div className="text-xs text-muted-foreground">{p.durationDays} أيام • {p.hotelStars} نجوم</div>
               </CardContent>
             </Card>
@@ -445,7 +446,7 @@ function OrdersTab() {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-left">
-                      <div className="font-bold text-primary">{o.totalPrice.toLocaleString()} {o.currency}</div>
+                      <div className="font-bold text-primary">{o.totalPrice.toLocaleString()} {getCurrencySymbol(o.currency)}</div>
                       <div className="text-[10px] text-muted-foreground">{new Date(o.createdAt).toLocaleDateString("ar")}</div>
                     </div>
                     {o.status === "PENDING_PAYMENT" && (
@@ -537,7 +538,7 @@ function PromotionsTab() {
                   <div>
                     <div className="flex items-center gap-2">
                       <Badge className="bg-accent text-accent-foreground">
-                        {p.discountType === "PERCENTAGE" ? `${p.discountValue}%` : `${p.discountValue} ر.س`}
+                        {p.discountType === "PERCENTAGE" ? `${p.discountValue}%` : `${p.discountValue} د.ل`}
                       </Badge>
                       {p.isActive ? <Badge className="bg-green-100 text-green-700">فعّال</Badge> : <Badge className="bg-muted text-muted-foreground">موقوف</Badge>}
                     </div>

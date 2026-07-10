@@ -21,6 +21,7 @@ import {
   TrendingUp, DollarSign, Clock, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrencySymbol } from "@/lib/currency";
 
 type TabKey = "overview" | "packages" | "orders" | "profile";
 
@@ -90,7 +91,7 @@ function OverviewTab() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <StatCard icon={Package} label="إجمالي الباقات" value={packages.length} sub={`${activePackages.length} فعّالة`} color="primary" />
         <StatCard icon={ShoppingCart} label="إجمالي الطلبات" value={orders.length} sub={`${pendingOrders.length} بانتظار الدفع`} color="chart-3" />
-        <StatCard icon={DollarSign} label="الإيرادات" value={`${totalRevenue.toLocaleString()} ر.س`} sub={`${paidOrders.length} طلب مدفوع`} color="chart-4" />
+        <StatCard icon={DollarSign} label="الإيرادات" value={`${totalRevenue.toLocaleString()} د.ل`} sub={`${paidOrders.length} طلب مدفوع`} color="chart-4" />
         <StatCard icon={Star} label="متوسط التقييم" value={(0).toFixed(1)} sub="لا توجد تقييمات" color="accent" />
       </div>
 
@@ -118,7 +119,7 @@ function OverviewTab() {
                     <div className="text-xs text-muted-foreground">{o.package?.title}</div>
                   </div>
                   <div className="text-left">
-                    <div className="font-bold text-primary">{o.totalPrice.toLocaleString()} ر.س</div>
+                    <div className="font-bold text-primary">{o.totalPrice.toLocaleString()} د.ل</div>
                     <OrderStatusBadge status={o.status} />
                   </div>
                 </div>
@@ -210,7 +211,7 @@ function PackagesTab() {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     {p.oldPrice && <span className="text-xs text-muted-foreground line-through ml-2">{p.oldPrice.toLocaleString()}</span>}
-                    <span className="font-bold text-primary">{p.price.toLocaleString()} {p.currency}</span>
+                    <span className="font-bold text-primary">{p.price.toLocaleString()} {getCurrencySymbol(p.currency)}</span>
                   </div>
                   {p.isFeatured && <Badge className="bg-accent text-accent-foreground">مميزة</Badge>}
                 </div>
@@ -328,7 +329,7 @@ function PackageModal({ mode, pkg, onClose, onSaved }: { mode: "create" | "edit"
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="mb-1.5">السعر (ر.س) *</Label>
+              <Label className="mb-1.5">السعر (دينار ليبي) *</Label>
               <Input type="number" min="0" step="0.01" required value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
             </div>
             <div>
@@ -459,7 +460,7 @@ function OrdersTab() {
     const msg = `السلام عليكم ${order.customerName}،
 
 بخصوص طلبك رقم ${order.orderNumber} للباقة "${order.package?.title}":
-- الإجمالي: ${order.totalPrice.toLocaleString()} ${order.currency}
+- الإجمالي: ${order.totalPrice.toLocaleString()} ${getCurrencySymbol(order.currency)}
 
 أهلاً وسهلاً بك، نحن جاهزون لخدمتك.`;
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
@@ -506,7 +507,7 @@ function OrdersTab() {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-left">
-                      <div className="font-bold text-primary">{o.totalPrice.toLocaleString()} {o.currency}</div>
+                      <div className="font-bold text-primary">{o.totalPrice.toLocaleString()} {getCurrencySymbol(o.currency)}</div>
                       <div className="text-[10px] text-muted-foreground">{new Date(o.createdAt).toLocaleDateString("ar")}</div>
                     </div>
                     <Button
