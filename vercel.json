@@ -1,0 +1,16 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "bun run build",
+  "installCommand": "bun install",
+  "functions": {
+    "src/app/api/**/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "regions": ["fra1"],
+  "env": {
+    "DATABASE_URL": "file:./db/custom.db",
+    "JWT_SECRET": "@umrah-libya-jwt-secret-2026",
+    "NEXTAUTH_URL": "@nextauth-url"
+  }
+}
