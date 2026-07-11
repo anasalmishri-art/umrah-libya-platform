@@ -91,13 +91,22 @@ export function Navbar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {(user.role === "SUPER_ADMIN" || user.role === "COMPANY") && (
-                  <DropdownMenuItem
-                    onClick={() => setView(user.role === "SUPER_ADMIN" ? "admin-dashboard" : "company-dashboard")}
-                    className="cursor-pointer"
-                  >
+                {user.role === "SUPER_ADMIN" && (
+                  <DropdownMenuItem onClick={() => setView("admin-dashboard")} className="cursor-pointer">
                     <LayoutDashboard className="ml-2 h-4 w-4" />
                     <span>لوحة التحكم</span>
+                  </DropdownMenuItem>
+                )}
+                {user.role === "COMPANY" && (
+                  <DropdownMenuItem onClick={() => setView("company-dashboard")} className="cursor-pointer">
+                    <LayoutDashboard className="ml-2 h-4 w-4" />
+                    <span>لوحة التحكم</span>
+                  </DropdownMenuItem>
+                )}
+                {user.role === "CUSTOMER" && (
+                  <DropdownMenuItem onClick={() => setView("customer-dashboard")} className="cursor-pointer">
+                    <User className="ml-2 h-4 w-4" />
+                    <span>حسابي</span>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -154,16 +163,31 @@ export function Navbar() {
                     <div className="font-semibold">{user.name}</div>
                     <div className="text-xs text-muted-foreground">{user.email}</div>
                   </div>
-                  {(user.role === "SUPER_ADMIN" || user.role === "COMPANY") && (
+                  {user.role === "SUPER_ADMIN" && (
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        setView(user.role === "SUPER_ADMIN" ? "admin-dashboard" : "company-dashboard");
-                        setMobileOpen(false);
-                      }}
+                      onClick={() => { setView("admin-dashboard"); setMobileOpen(false); }}
                     >
                       <LayoutDashboard className="ml-2 h-4 w-4" />
                       لوحة التحكم
+                    </Button>
+                  )}
+                  {user.role === "COMPANY" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => { setView("company-dashboard"); setMobileOpen(false); }}
+                    >
+                      <LayoutDashboard className="ml-2 h-4 w-4" />
+                      لوحة التحكم
+                    </Button>
+                  )}
+                  {user.role === "CUSTOMER" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => { setView("customer-dashboard"); setMobileOpen(false); }}
+                    >
+                      <User className="ml-2 h-4 w-4" />
+                      حسابي
                     </Button>
                   )}
                   <Button

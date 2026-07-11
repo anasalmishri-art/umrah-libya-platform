@@ -8,6 +8,7 @@ export type View =
   | "company-detail"
   | "admin-dashboard"
   | "company-dashboard"
+  | "customer-dashboard"
   | "about"
   | "contact";
 
@@ -44,9 +45,9 @@ export const useAppStore = create<AppState>((set) => ({
   setSelectedPackageId: (selectedPackageId) => set({ selectedPackageId }),
   setSelectedCompanyId: (selectedCompanyId) => set({ selectedCompanyId }),
   setSelectedPackageForOrder: (selectedPackageForOrder) => set({ selectedPackageForOrder }),
-  openLogin: () => set({ authModal: "login" }),
-  openRegister: () => set({ authModal: "register" }),
-  openPackageDetail: (id) => set({ selectedPackageId: id, authModal: "package-detail" }),
-  openOrderModal: (pkg) => set({ selectedPackageForOrder: pkg, authModal: "order" }),
+  openLogin: () => set({ authModal: "login", selectedPackageId: null, selectedPackageForOrder: null }),
+  openRegister: () => set({ authModal: "register", selectedPackageId: null, selectedPackageForOrder: null }),
+  openPackageDetail: (id) => set({ selectedPackageId: id, authModal: "package-detail", selectedPackageForOrder: null }),
+  openOrderModal: (pkg) => set({ selectedPackageForOrder: pkg, authModal: "order", selectedPackageId: null }),
   closeModals: () => set({ authModal: null, selectedPackageId: null, selectedPackageForOrder: null }),
 }));

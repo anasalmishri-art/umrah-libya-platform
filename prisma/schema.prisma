@@ -1,4 +1,4 @@
-// Prisma schema for Umrah Platform
+// Prisma schema for Umrah Platform - Libyan Market
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,8 +19,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company   Company?
-  orders    Order[]
+  company      Company?
+  orders       Order[]
+  messages     Message[]
 }
 
 // ============= Umrah Companies =============
@@ -43,6 +44,11 @@ model Company {
 
   status          String   @default("PENDING") // PENDING | APPROVED | REJECTED | SUSPENDED
   rating          Float    @default(0)
+
+  // Featured company (requires admin approval)
+  isFeatured      Boolean  @default(false)
+  featuredStatus  String   @default("NONE") // NONE | PENDING | APPROVED | REJECTED
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -76,7 +82,10 @@ model Package {
   features        String?  // JSON string of features list
 
   isActive        Boolean  @default(true)
+
+  // Featured package (requires admin approval - paid promotion)
   isFeatured      Boolean  @default(false)
+  featuredStatus  String   @default("NONE") // NONE | PENDING | APPROVED | REJECTED
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -113,9 +122,11 @@ model Order {
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  messages        Message[]
 }
 
-// ============= Promotions / Discount Offers (managed by Super Admin) =============
+// ============= Promotions / Discount Offers =============
 model Promotion {
   id              String   @id @default(cuid())
   title           String
@@ -132,12 +143,32 @@ model Promotion {
   startDate       String
   endDate         String
 
+  // Approval system
+  status          String   @default("PENDING") // PENDING | APPROVED | REJECTED
   isActive        Boolean  @default(true)
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
-// ============= Site Settings (Super Admin) =============
+// ============= Messages (Auto notifications for customers) =============
+model Message {
+  id              String   @id @default(cuid())
+  customerId      String
+  customer        User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  orderId         String?
+  order           Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  type            String   // BOOKING_CONFIRMATION | PAYMENT_REMINDER | APPOINTMENT_REMINDER | UMRAH_GUIDE | PRE_DEPARTURE | WELCOME | STATUS_UPDATE
+  title           String
+  content         String
+  isRead          Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+}
+
+// ============= Site Settings (CMS - editable by admin) =============
 model Setting {
   id              String   @id @default(cuid())
   key             String   @unique

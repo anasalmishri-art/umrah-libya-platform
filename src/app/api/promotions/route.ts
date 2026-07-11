@@ -3,16 +3,17 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
 // GET: list promotions
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     const now = new Date().toISOString().slice(0, 10);
 
-    // Public: only active promotions within date range
+    // Public: only approved active promotions within date range
     if (!user || user.role !== "SUPER_ADMIN") {
       const promotions = await db.promotion.findMany({
         where: {
           isActive: true,
+          status: "APPROVED",
           startDate: { lte: now },
           endDate: { gte: now },
         },
@@ -22,7 +23,12 @@ export async function GET() {
     }
 
     // Admin: all promotions
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
+
+    const where = status ? { status } : {};
     const promotions = await db.promotion.findMany({
+      where,
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json({ promotions });
@@ -32,39 +38,46 @@ export async function GET() {
   }
 }
 
-// POST: create promotion (admin only)
+// POST: create promotion (admin only - creates as APPROVED directly)
+// Or company can create promotion (creates as PENDING)
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user || user.role !== "SUPER_ADMIN") {
+    if (!user) {
       return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
     }
 
     const body = await req.json();
-    const promo = await db.promotion.create({
-      data: {
-        title: body.title,
-        description: body.description || null,
-        banner: body.banner || null,
-        discountType: body.discountType || "PERCENTAGE",
-        discountValue: parseFloat(body.discountValue) || 0,
-        appliesTo: body.appliesTo || "ALL",
-        packageId: body.packageId || null,
-        companyId: body.companyId || null,
-        startDate: body.startDate,
-        endDate: body.endDate,
-        isActive: body.isActive !== false,
-      },
-    });
 
-    return NextResponse.json({ success: true, promotion: promo });
+    // Admin creates approved promotion directly
+    if (user.role === "SUPER_ADMIN") {
+      const promo = await db.promotion.create({
+        data: {
+          title: body.title,
+          description: body.description || null,
+          banner: body.banner || null,
+          discountType: body.discountType || "PERCENTAGE",
+          discountValue: parseFloat(body.discountValue) || 0,
+          appliesTo: body.appliesTo || "ALL",
+          packageId: body.packageId || null,
+          companyId: body.companyId || null,
+          startDate: body.startDate,
+          endDate: body.endDate,
+          isActive: body.isActive !== false,
+          status: "APPROVED",
+        },
+      });
+      return NextResponse.json({ success: true, promotion: promo });
+    }
+
+    return NextResponse.json({ error: "فقط المسؤول يمكنه إنشاء العروض" }, { status: 403 });
   } catch (error) {
     console.error("Create promotion error:", error);
     return NextResponse.json({ error: "حدث خطأ" }, { status: 500 });
   }
 }
 
-// PUT: update promotion
+// PUT: update promotion (admin only)
 export async function PUT(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -77,7 +90,7 @@ export async function PUT(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "المعرف مطلوب" }, { status: 400 });
 
     const updateData: any = {};
-    ["title", "description", "banner", "discountType", "appliesTo", "packageId", "companyId", "startDate", "endDate"].forEach((f) => {
+    ["title", "description", "banner", "discountType", "appliesTo", "packageId", "companyId", "startDate", "endDate", "status"].forEach((f) => {
       if (data[f] !== undefined) updateData[f] = data[f];
     });
     if (data.discountValue !== undefined) updateData.discountValue = parseFloat(data.discountValue);

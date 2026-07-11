@@ -14,27 +14,27 @@ import { OrderModal } from "@/components/public/order-modal";
 import { AuthModals } from "@/components/auth/auth-modals";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
 import { CompanyDashboard } from "@/components/company/company-dashboard";
+import { CustomerDashboard } from "@/components/customer/customer-dashboard";
 import { useAppStore } from "@/lib/store";
 import { useAuth, useInitAuth } from "@/hooks/use-auth";
 
 export default function Home() {
   const { view } = useAppStore();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   useInitAuth();
 
-  // Scroll to top when view changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [view]);
 
-  // Guard dashboards
   const showAdminDashboard = view === "admin-dashboard" && user?.role === "SUPER_ADMIN";
   const showCompanyDashboard = view === "company-dashboard" && user?.role === "COMPANY";
+  const showCustomerDashboard = view === "customer-dashboard" && user?.role === "CUSTOMER";
 
-  // If user clicks dashboard but isn't authorized, fall back to home
   const effectiveView =
     view === "admin-dashboard" && user?.role !== "SUPER_ADMIN" ? "home" :
     view === "company-dashboard" && user?.role !== "COMPANY" ? "home" :
+    view === "customer-dashboard" && user?.role !== "CUSTOMER" ? "home" :
     view;
 
   return (
@@ -46,6 +46,8 @@ export default function Home() {
           <AdminDashboard />
         ) : showCompanyDashboard ? (
           <CompanyDashboard />
+        ) : showCustomerDashboard ? (
+          <CustomerDashboard />
         ) : (
           <>
             {effectiveView === "home" && <HomeView />}
@@ -58,10 +60,8 @@ export default function Home() {
         )}
       </main>
 
-      {/* Hide footer on dashboard views */}
-      {!showAdminDashboard && !showCompanyDashboard && <Footer />}
+      {!showAdminDashboard && !showCompanyDashboard && !showCustomerDashboard && <Footer />}
 
-      {/* Modals */}
       <AuthModals />
       <PackageDetailModal />
       <OrderModal />

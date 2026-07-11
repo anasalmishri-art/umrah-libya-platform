@@ -40,3 +40,23 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "حدث خطأ" }, { status: 500 });
   }
 }
+
+// DELETE: delete a setting (admin only)
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+    if (!user || user.role !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const key = searchParams.get("key");
+    if (!key) return NextResponse.json({ error: "المفتاح مطلوب" }, { status: 400 });
+
+    await db.setting.deleteMany({ where: { key } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Delete setting error:", error);
+    return NextResponse.json({ error: "حدث خطأ" }, { status: 500 });
+  }
+}

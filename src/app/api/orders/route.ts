@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { createOrderMessages } from "@/lib/auto-messages";
+import bcrypt from "bcryptjs";
 
 // GET: list orders (admin: all, company: their own, customer: their own)
 export async function GET(req: NextRequest) {
@@ -67,6 +69,33 @@ export async function POST(req: NextRequest) {
     }
 
     const user = await getCurrentUser();
+    let customerId: string | null = null;
+
+    // Auto-create or link customer account
+    if (user && user.role === "CUSTOMER") {
+      customerId = user.id;
+    } else if (customerEmail) {
+      // Try to find existing customer by email, or create one
+      const existingUser = await db.user.findUnique({ where: { email: customerEmail.toLowerCase() } });
+      if (existingUser) {
+        customerId = existingUser.id;
+      } else {
+        // Auto-create a customer account with random password
+        const randomPassword = Math.random().toString(36).slice(-8);
+        const hashedPassword = await bcrypt.hash(randomPassword, 10);
+        const newCustomer = await db.user.create({
+          data: {
+            email: customerEmail.toLowerCase(),
+            password: hashedPassword,
+            name: customerName,
+            phone: customerPhone,
+            role: "CUSTOMER",
+          },
+        });
+        customerId = newCustomer.id;
+      }
+    }
+
     const totalPrice = pkg.price * (parseInt(numPersons) || 1);
     const orderNumber = `UMR-${Date.now().toString().slice(-8)}`;
 
@@ -75,7 +104,7 @@ export async function POST(req: NextRequest) {
         orderNumber,
         packageId: pkg.id,
         companyId: pkg.companyId,
-        customerId: user?.role === "CUSTOMER" ? user.id : null,
+        customerId,
         customerName,
         customerPhone,
         customerEmail,
@@ -87,10 +116,15 @@ export async function POST(req: NextRequest) {
         paymentMethod: "WHATSAPP",
       },
       include: {
-        package: { select: { title: true, type: true, durationDays: true } },
+        package: { select: { title: true, type: true, durationDays: true, departureDate: true } },
         company: { select: { name: true, phone: true, whatsapp: true } },
       },
     });
+
+    // Create auto messages for the customer
+    if (customerId) {
+      await createOrderMessages(order.id, customerId, customerName, customerPhone, order);
+    }
 
     return NextResponse.json({ success: true, order });
   } catch (error) {

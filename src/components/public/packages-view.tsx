@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Star, Clock, Users, MapPin, Plane, Utensils, Compass, Calendar, Search, Sparkles, Tag, Building2 } from "lucide-react";
+import { Star, Clock, Users, MapPin, Plane, Utensils, Compass, Calendar, Search, Sparkles, Tag, Building2, ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrencySymbol } from "@/lib/currency";
 
@@ -51,12 +51,17 @@ const typeColors: Record<string, string> = {
 
 export function PackagesView() {
   const { data, loading } = useFetch<{ packages: Package[] }>("/api/packages");
-  const { openPackageDetail } = useAppStore();
+  const { openPackageDetail, selectedCompanyId, setSelectedCompanyId } = useAppStore();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("newest");
 
   let packages = data?.packages || [];
+
+  // Filter by selected company (from home page click)
+  if (selectedCompanyId) {
+    packages = packages.filter((p) => p.company.id === selectedCompanyId);
+  }
 
   // Filter
   if (search.trim()) {
@@ -80,10 +85,35 @@ export function PackagesView() {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8 text-center">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-primary mb-3">باقات العمرة المتاحة</h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          اختر من بين أفضل باقات العمرة المقدمة من شركات معتمدة. جميع الباقات تشمل الإقامة والتنقل والإشراف الديني.
-        </p>
+        {selectedCompanyId && packages.length > 0 ? (
+          <>
+            <Badge className="bg-primary/10 text-primary mb-3">
+              {packages[0].company.name}
+            </Badge>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-primary mb-3">
+              باقات {packages[0].company.name}
+            </h1>
+            <p className="text-muted-foreground max-w-2xl mx-auto mb-3">
+              {packages[0].company.city} • تقييم {packages[0].company.rating?.toFixed(1)}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedCompanyId(null)}
+              className="text-primary hover:bg-primary/5"
+            >
+              عرض كل الباقات
+              <ArrowLeft className="mr-1 h-4 w-4" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-primary mb-3">باقات العمرة المتاحة</h1>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              اختر من بين أفضل باقات العمرة المقدمة من شركات معتمدة. جميع الباقات تشمل الإقامة والتنقل والإشراف الديني.
+            </p>
+          </>
+        )}
       </div>
 
       {/* Filters */}

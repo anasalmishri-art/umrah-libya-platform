@@ -57,6 +57,8 @@ function LoginModal({ open, onClose, onSwitchToRegister }: { open: boolean; onCl
         setView("admin-dashboard");
       } else if (role === "COMPANY") {
         setView("company-dashboard");
+      } else if (role === "CUSTOMER") {
+        setView("customer-dashboard");
       }
       onClose();
     } catch (e: any) {

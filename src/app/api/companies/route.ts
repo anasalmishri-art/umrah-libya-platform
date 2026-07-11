@@ -7,26 +7,33 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
+    const featured = searchParams.get("featured");
     const user = await getCurrentUser();
 
     // Public: only approved companies
     if (!user || user.role !== "SUPER_ADMIN") {
+      const where: any = { status: "APPROVED" };
+      if (featured === "true") {
+        where.isFeatured = true;
+      }
       const companies = await db.company.findMany({
-        where: { status: "APPROVED" },
+        where,
         include: {
           _count: { select: { packages: { where: { isActive: true } } } },
         },
-        orderBy: { rating: "desc" },
+        orderBy: featured === "true" ? { rating: "desc" } : { name: "asc" },
       });
       return NextResponse.json({ companies });
     }
 
     // Admin: can filter by status
-    const where = status ? { status } : {};
+    const where: any = {};
+    if (status) where.status = status;
+    if (featured === "true") where.isFeatured = true;
     const companies = await db.company.findMany({
       where,
       include: {
-        user: { select: { email: true, phone: true } },
+        user: { select: { id: true, email: true, phone: true, name: true } },
         _count: { select: { packages: true, orders: true } },
       },
       orderBy: { createdAt: "desc" },

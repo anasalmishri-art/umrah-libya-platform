@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { createPaymentConfirmationMessage, createStatusUpdateMessage } from "@/lib/auto-messages";
 
 // POST: change order status (admin only)
 export async function POST(req: NextRequest) {
@@ -22,10 +23,19 @@ export async function POST(req: NextRequest) {
       where: { id: orderId },
       data: { status },
       include: {
-        package: { select: { title: true } },
-        company: { select: { name: true } },
+        package: { select: { title: true, departureDate: true } },
+        company: { select: { name: true, whatsapp: true, phone: true } },
       },
     });
+
+    // Send auto messages for status changes
+    if (order.customerId) {
+      if (status === "PAID") {
+        await createPaymentConfirmationMessage(order.id, order.customerId, order.customerName, order);
+      } else if (status === "COMPLETED" || status === "CANCELLED") {
+        await createStatusUpdateMessage(order.id, order.customerId, order.customerName, order, status);
+      }
+    }
 
     return NextResponse.json({ success: true, order });
   } catch (error) {

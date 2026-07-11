@@ -19,11 +19,12 @@ import {
   Building2, Package, ShoppingCart, Plus, Edit, Trash2, Star,
   Phone, Mail, MapPin, FileText, Calendar, LayoutDashboard,
   TrendingUp, DollarSign, Clock, CheckCircle2, AlertCircle,
+  Upload, FileImage, Sparkles, Loader2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrencySymbol } from "@/lib/currency";
 
-type TabKey = "overview" | "packages" | "orders" | "profile";
+type TabKey = "overview" | "packages" | "orders" | "profile" | "upload";
 
 export function CompanyDashboard() {
   const [tab, setTab] = useState<TabKey>("overview");
@@ -45,7 +46,7 @@ export function CompanyDashboard() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
+        <TabsList className="grid w-full grid-cols-5 h-auto">
           <TabsTrigger value="overview" className="flex flex-col items-center gap-1 py-2 text-xs md:text-sm">
             <LayoutDashboard className="h-4 w-4" />
             <span>نظرة عامة</span>
@@ -53,6 +54,10 @@ export function CompanyDashboard() {
           <TabsTrigger value="packages" className="flex flex-col items-center gap-1 py-2 text-xs md:text-sm">
             <Package className="h-4 w-4" />
             <span>الباقات</span>
+          </TabsTrigger>
+          <TabsTrigger value="upload" className="flex flex-col items-center gap-1 py-2 text-xs md:text-sm">
+            <Upload className="h-4 w-4" />
+            <span>رفع ملف</span>
           </TabsTrigger>
           <TabsTrigger value="orders" className="flex flex-col items-center gap-1 py-2 text-xs md:text-sm">
             <ShoppingCart className="h-4 w-4" />
@@ -66,6 +71,7 @@ export function CompanyDashboard() {
 
         <TabsContent value="overview"><OverviewTab /></TabsContent>
         <TabsContent value="packages"><PackagesTab /></TabsContent>
+        <TabsContent value="upload"><UploadTab /></TabsContent>
         <TabsContent value="orders"><OrdersTab /></TabsContent>
         <TabsContent value="profile"><ProfileTab /></TabsContent>
       </Tabs>
@@ -175,6 +181,22 @@ function PackagesTab() {
     }
   };
 
+  const handleRequestFeature = async (packageId: string) => {
+    try {
+      const res = await fetch("/api/packages/feature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packageId, action: "REQUEST" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast({ title: "تم إرسال طلب التمييز", description: "سيتم مراجعته من قبل الإدارة" });
+      refetch();
+    } catch (e: any) {
+      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -200,7 +222,11 @@ function PackagesTab() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <h3 className="font-bold text-sm line-clamp-2 flex-1">{p.title}</h3>
-                  {p.isActive ? <Badge className="bg-green-100 text-green-700">فعّالة</Badge> : <Badge className="bg-muted text-muted-foreground">موقوفة</Badge>}
+                  <div className="flex flex-col gap-1 items-end">
+                    {p.isActive ? <Badge className="bg-green-100 text-green-700 text-[10px]">فعّالة</Badge> : <Badge className="bg-muted text-muted-foreground text-[10px]">موقوفة</Badge>}
+                    {p.isFeatured && <Badge className="bg-accent text-accent-foreground text-[10px]">مميزة ✓</Badge>}
+                    {p.featuredStatus === "PENDING" && <Badge className="bg-amber-100 text-amber-700 text-[10px]">تمييز معلّق</Badge>}
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{p.description}</p>
                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
@@ -213,12 +239,21 @@ function PackagesTab() {
                     {p.oldPrice && <span className="text-xs text-muted-foreground line-through ml-2">{p.oldPrice.toLocaleString()}</span>}
                     <span className="font-bold text-primary">{p.price.toLocaleString()} {getCurrencySymbol(p.currency)}</span>
                   </div>
-                  {p.isFeatured && <Badge className="bg-accent text-accent-foreground">مميزة</Badge>}
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setModal({ mode: "edit", pkg: p })}>
+                <div className="flex gap-1.5 flex-wrap">
+                  <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => setModal({ mode: "edit", pkg: p })}>
                     <Edit className="ml-1 h-3 w-3" /> تعديل
                   </Button>
+                  {p.featuredStatus === "NONE" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs border-accent text-accent-foreground hover:bg-accent/10"
+                      onClick={() => handleRequestFeature(p.id)}
+                    >
+                      <Sparkles className="ml-1 h-3 w-3" /> طلب تمييز
+                    </Button>
+                  )}
                   <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(p.id)} disabled={deleting === p.id}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -613,6 +648,320 @@ function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className="text-sm font-medium" dir={value.startsWith("+") ? "ltr" : "rtl"}>{value}</div>
       </div>
+    </div>
+  );
+}
+
+// ============= UPLOAD PDF/IMAGE with AI parsing =============
+function UploadTab() {
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [parsedPackages, setParsedPackages] = useState<any[] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleFile = async (file: File) => {
+    // Validate
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "نوع الملف غير مدعوم", description: "يسمح بـ: JPEG, PNG, WebP, GIF, PDF", variant: "destructive" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "حجم الملف كبير", description: "الحد الأقصى 10 ميجابايت", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    setParsedPackages(null);
+
+    try {
+      // Step 1: Upload the file
+      const formData = new FormData();
+      formData.append("file", file);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) throw new Error(uploadData.error);
+
+      setUploading(false);
+      setParsing(true);
+
+      // Step 2: Convert to base64 for VLM
+      const base64 = await fileToBase64(file);
+
+      // Step 3: Parse with AI
+      const parseRes = await fetch("/api/parse-package", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileData: base64,
+          fileName: file.name,
+          fileType: file.type === "application/pdf" ? "pdf" : "image",
+        }),
+      });
+      const parseData = await parseRes.json();
+      if (!parseRes.ok || !parseData.success) {
+        throw new Error(parseData.error || "فشل التحليل");
+      }
+
+      setParsedPackages(parseData.packages || []);
+      toast({
+        title: `تم استخراج ${parseData.packages?.length || 0} باقة`,
+        description: "راجع البيانات قبل الحفظ",
+      });
+    } catch (e: any) {
+      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      setParsing(false);
+    }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleSaveAll = async () => {
+    if (!parsedPackages || parsedPackages.length === 0) return;
+    setSaving(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const pkg of parsedPackages) {
+      try {
+        const res = await fetch("/api/packages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: pkg.title,
+            description: pkg.description,
+            type: pkg.type || "UMRAH",
+            durationDays: pkg.durationDays || 7,
+            price: pkg.price || 0,
+            oldPrice: pkg.oldPrice,
+            hotelStars: pkg.hotelStars || 3,
+            hotelName: pkg.hotelName,
+            includesTransport: pkg.includesTransport ?? true,
+            includesMeals: pkg.includesMeals ?? false,
+            includesGuide: pkg.includesGuide ?? true,
+            includesZiyarat: pkg.includesZiyarat ?? true,
+            departureDate: pkg.departureDate,
+            availableSeats: pkg.availableSeats || 0,
+            features: pkg.features || [],
+          }),
+        });
+        if (res.ok) successCount++;
+        else failCount++;
+      } catch {
+        failCount++;
+      }
+    }
+
+    toast({
+      title: `تم حفظ ${successCount} باقة بنجاح`,
+      description: failCount > 0 ? `فشل حفظ ${failCount} باقة` : undefined,
+      variant: failCount > 0 ? "destructive" : "default",
+    });
+    setParsedPackages(null);
+    setSaving(false);
+  };
+
+  const updatePackage = (index: number, field: string, value: any) => {
+    if (!parsedPackages) return;
+    const updated = [...parsedPackages];
+    updated[index] = { ...updated[index], [field]: value };
+    setParsedPackages(updated);
+  };
+
+  const removePackage = (index: number) => {
+    if (!parsedPackages) return;
+    setParsedPackages(parsedPackages.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Upload className="h-5 w-5 text-primary" />
+            رفع ملف الباقات (PDF / صورة)
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            ارفع ملف PDF أو صورة يحتوي على تفاصيل باقات شركتك، وسيقوم النظام تلقائياً بقراءة المحتوى واستخراج الباقات.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {!parsedPackages && !uploading && !parsing && (
+            <div
+              className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border"}`}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+              }}
+            >
+              <FileImage className="h-16 w-16 mx-auto mb-3 text-primary/60" />
+              <p className="text-sm font-medium mb-1">اسحب وأفلت الملف هنا</p>
+              <p className="text-xs text-muted-foreground mb-4">أو اضغط لاختيار ملف</p>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+                className="hidden"
+                id="file-upload"
+              />
+              <Button onClick={() => document.getElementById("file-upload")?.click()} variant="outline">
+                <Upload className="ml-2 h-4 w-4" />
+                اختيار ملف
+              </Button>
+              <p className="text-[10px] text-muted-foreground mt-3">
+                الأنواع المدعومة: PDF, JPG, PNG, WebP • الحد الأقصى: 10 ميجابايت
+              </p>
+            </div>
+          )}
+
+          {uploading && (
+            <div className="text-center py-8">
+              <Loader2 className="h-12 w-12 mx-auto mb-3 text-primary animate-spin" />
+              <p className="text-sm font-medium">جارٍ رفع الملف...</p>
+            </div>
+          )}
+
+          {parsing && (
+            <div className="text-center py-8">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary mb-3">
+                <Sparkles className="h-8 w-8 animate-pulse" />
+              </div>
+              <p className="text-sm font-medium mb-1">جارٍ تحليل المحتوى بالذكاء الاصطناعي...</p>
+              <p className="text-xs text-muted-foreground">قد يستغرق هذا بعض الوقت</p>
+            </div>
+          )}
+
+          {parsedPackages && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold">تم استخراج {parsedPackages.length} باقة</h3>
+                  <p className="text-xs text-muted-foreground">راجع البيانات أدناه وقم بتعديلها قبل الحفظ</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setParsedPackages(null)}>
+                    إلغاء
+                  </Button>
+                  <Button size="sm" onClick={handleSaveAll} disabled={saving || parsedPackages.length === 0} className="bg-primary hover:bg-primary/90">
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : `حفظ الكل (${parsedPackages.length})`}
+                  </Button>
+                </div>
+              </div>
+
+              {parsedPackages.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                  <p>لم يتم العثور على باقات في الملف</p>
+                  <p className="text-xs mt-1">جرّب رفع ملف أوضح أو أضف الباقات يدوياً</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {parsedPackages.map((pkg, i) => (
+                    <Card key={i} className="border-border/60">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-muted-foreground">باقة #{i + 1}</span>
+                          <Button size="sm" variant="ghost" className="text-destructive h-7" onClick={() => removePackage(i)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          <div>
+                            <Label className="mb-1 text-xs">العنوان</Label>
+                            <Input value={pkg.title || ""} onChange={(e) => updatePackage(i, "title", e.target.value)} className="text-sm" />
+                          </div>
+                          <div>
+                            <Label className="mb-1 text-xs">النوع</Label>
+                            <Select value={pkg.type || "UMRAH"} onValueChange={(v) => updatePackage(i, "type", v)}>
+                              <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="UMRAH">عمرة</SelectItem>
+                                <SelectItem value="RAMADAN">عمرة رمضان</SelectItem>
+                                <SelectItem value="HAJJ">حج</SelectItem>
+                                <SelectItem value="COMBINED">عمرة وحج</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="mb-1 text-xs">الوصف</Label>
+                          <Textarea value={pkg.description || ""} onChange={(e) => updatePackage(i, "description", e.target.value)} rows={2} className="text-sm resize-none" />
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label className="mb-1 text-xs">المدة (أيام)</Label>
+                            <Input type="number" value={pkg.durationDays || ""} onChange={(e) => updatePackage(i, "durationDays", parseInt(e.target.value) || 7)} className="text-sm" />
+                          </div>
+                          <div>
+                            <Label className="mb-1 text-xs">السعر (د.ل)</Label>
+                            <Input type="number" value={pkg.price || ""} onChange={(e) => updatePackage(i, "price", parseFloat(e.target.value) || 0)} className="text-sm" />
+                          </div>
+                          <div>
+                            <Label className="mb-1 text-xs">الفندق (نجوم)</Label>
+                            <Input type="number" min="1" max="5" value={pkg.hotelStars || ""} onChange={(e) => updatePackage(i, "hotelStars", parseInt(e.target.value) || 3)} className="text-sm" />
+                          </div>
+                        </div>
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          <div>
+                            <Label className="mb-1 text-xs">اسم الفندق</Label>
+                            <Input value={pkg.hotelName || ""} onChange={(e) => updatePackage(i, "hotelName", e.target.value)} className="text-sm" />
+                          </div>
+                          <div>
+                            <Label className="mb-1 text-xs">تاريخ الانطلاق</Label>
+                            <Input type="date" value={pkg.departureDate || ""} onChange={(e) => updatePackage(i, "departureDate", e.target.value)} className="text-sm" />
+                          </div>
+                        </div>
+                        {pkg.features && Array.isArray(pkg.features) && pkg.features.length > 0 && (
+                          <div>
+                            <Label className="mb-1 text-xs">المميزات</Label>
+                            <div className="flex flex-wrap gap-1">
+                              {pkg.features.map((f: string, fi: number) => (
+                                <Badge key={fi} variant="outline" className="text-[10px]">{f}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Sparkles className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-blue-800">
+              <strong className="block mb-1">كيف تعمل هذه الميزة؟</strong>
+              <ol className="list-decimal list-inside space-y-0.5">
+                <li>ارفع ملف PDF أو صورة يحتوي على تفاصيل باقات شركتك</li>
+                <li>سيقوم النظام بقراءة المحتوى باستخدام الذكاء الاصطناعي</li>
+                <li>سيتم استخراج الباقات وعرضها للمراجعة</li>
+                <li>عدّل البيانات إذا لزم الأمر</li>
+                <li>احفظ الباقات وستظهر فوراً للعملاء</li>
+              </ol>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
