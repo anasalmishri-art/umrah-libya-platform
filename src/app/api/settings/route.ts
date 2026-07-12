@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { sanitizeText } from "@/lib/security";
+
+// القائمة البيضاء للمفاتيح المسموح بتعديلها
+const ALLOWED_SETTING_KEYS = new Set([
+  "site_name", "site_tagline", "site_logo",
+  "hero_badge", "hero_title", "hero_subtitle",
+  "hero_cta_primary", "hero_cta_secondary",
+  "stat_companies", "stat_companies_label",
+  "stat_packages", "stat_packages_label",
+  "stat_customers", "stat_customers_label",
+  "stat_experience", "stat_experience_label",
+  "why_title", "why_subtitle",
+  "feature_1_title", "feature_1_desc",
+  "feature_2_title", "feature_2_desc",
+  "feature_3_title", "feature_3_desc",
+  "feature_4_title", "feature_4_desc",
+  "featured_companies_title", "featured_companies_subtitle",
+  "promotions_title", "promotions_subtitle",
+  "all_companies_title", "all_companies_subtitle",
+  "cta_title", "cta_desc", "cta_button",
+  "about_title", "about_desc",
+  "about_mission_title", "about_mission_desc",
+  "about_vision_title", "about_vision_desc",
+  "contact_phone", "contact_whatsapp", "contact_email",
+  "contact_address", "contact_hours",
+  "footer_about", "footer_copyright",
+  "whatsapp_number",
+]);
 
 // GET: get all settings (public)
 export async function GET() {
@@ -26,11 +54,20 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const updates = body.settings || body;
 
+    // التحقق من كل مفتاح وتنظيف القيمة
     for (const [key, value] of Object.entries(updates)) {
+      // منع تعديل مفاتيح غير مصرح بها
+      if (!ALLOWED_SETTING_KEYS.has(key)) {
+        continue; // تجاهل المفاتيح غير المصرح بها
+      }
+
+      // تنظيف القيمة من XSS
+      const cleanValue = sanitizeText(String(value), 5000);
+
       await db.setting.upsert({
         where: { key },
-        update: { value: String(value) },
-        create: { key, value: String(value) },
+        update: { value: cleanValue },
+        create: { key, value: cleanValue },
       });
     }
 

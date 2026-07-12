@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { sanitizeText } from "@/lib/security";
+
+// أنواع الباقات المسموح بها
+const VALID_PACKAGE_TYPES = ["UMRAH", "RAMADAN", "HAJJ", "COMBINED", "ALL"];
 
 // GET: list packages (public gets only active, company gets their own, admin gets all)
 export async function GET(req: NextRequest) {
@@ -21,10 +25,16 @@ export async function GET(req: NextRequest) {
     } else {
       where.isActive = true;
       where.company = { status: "APPROVED" };
-      if (companyId) where.companyId = companyId;
+      // تنظيف companyId من XSS
+      if (companyId) {
+        where.companyId = sanitizeText(companyId, 100);
+      }
     }
 
-    if (type && type !== "ALL") where.type = type;
+    // التحقق من صحة type
+    if (type && type !== "ALL" && VALID_PACKAGE_TYPES.includes(type)) {
+      where.type = type;
+    }
     if (featured === "true") where.isFeatured = true;
 
     const packages = await db.package.findMany({

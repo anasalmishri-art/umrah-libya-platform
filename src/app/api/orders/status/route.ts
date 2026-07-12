@@ -13,10 +13,10 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { orderId, status } = body;
-    // status: PAID | PENDING_PAYMENT | CANCELLED | COMPLETED
-
-    if (!orderId || !status) {
-      return NextResponse.json({ error: "بيانات ناقصة" }, { status: 400 });
+    // التحقق من صحة status (منع أي قيمة أخرى)
+    const validStatuses = ["PENDING_PAYMENT", "PAID", "CANCELLED", "COMPLETED"];
+    if (!orderId || !status || !validStatuses.includes(status)) {
+      return NextResponse.json({ error: "بيانات ناقصة أو غير صحيحة" }, { status: 400 });
     }
 
     const order = await db.order.update({

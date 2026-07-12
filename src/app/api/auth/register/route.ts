@@ -3,23 +3,34 @@ import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { signToken, setSessionCookie } from "@/lib/auth";
 import {
-  rateLimit,
   getClientIP,
   isValidEmail,
   isValidPhone,
   isStrongPassword,
   sanitizeText,
 } from "@/lib/security";
+import { checkRateLimit } from "@/lib/rate-limit-redis";
+import { logLoginAttempt, recordFailedAttempt, isIPBanned } from "@/lib/audit-log";
 
 export async function POST(req: NextRequest) {
   try {
-    // ===== Rate Limiting =====
     const ip = getClientIP(req);
-    const limit = rateLimit(`register:${ip}`, 3, 60 * 60 * 1000); // 3 تسجيلات في الساعة
-    if (!limit.allowed) {
+
+    // ===== 1. التحقق من حظر IP =====
+    const banCheck = await isIPBanned(ip);
+    if (banCheck.banned) {
+      return NextResponse.json(
+        { error: `تم حظر عنوان IP الخاص بك. السبب: ${banCheck.reason}` },
+        { status: 403 }
+      );
+    }
+
+    // ===== 2. Rate Limiting (Redis) =====
+    const rateLimitResult = await checkRateLimit("register", ip);
+    if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: "تم تجاوز عدد محاولات التسجيل. حاول لاحقاً" },
-        { status: 429 }
+        { status: 429, headers: { "Retry-After": "3600" } }
       );
     }
 

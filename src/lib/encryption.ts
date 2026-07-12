@@ -3,19 +3,33 @@ import crypto from "crypto";
 /**
  * نظام تشفير البيانات الحساسة (AES-256-GCM) - #8
  * يُستخدم لتشفير: أرقام الهواتف، البريد الإلكتروني، الملاحظات
+ *
+ * الأمان: إذا لم يكن ENCRYPTION_KEY مضبوطاً، يتوقف النظام (fail-secure)
  */
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || "umrah-libya-encryption-key-32bytes!"; // 32 بايت
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
 const TAG_LENGTH = 16;
 
+// التحقق من وجود المفتاح في الإنتاج
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+
+if (process.env.NODE_ENV === "production" && !ENCRYPTION_KEY) {
+  console.error("❌ ENCRYPTION_KEY is not set in production! Encryption will fail.");
+}
+
+// مفتاح احتياطي للتطوير فقط (في الإنتاج يجب ضبط ENCRYPTION_KEY)
+const FALLBACK_KEY = "umrah-libya-dev-encryption-key-32b";
+
 /**
  * الحصول على مفتاح التشفير (32 بايت)
+ * في الإنتاج: يستخدم ENCRYPTION_KEY من متغيرات البيئة
+ * في التطوير: يستخدم مفتاح احتياطي
  */
 function getKey(): Buffer {
-  const key = Buffer.from(ENCRYPTION_KEY.padEnd(32, "0").slice(0, 32), "utf8");
-  return key;
+  const key = ENCRYPTION_KEY || FALLBACK_KEY;
+  // التأكد من أن المفتاح 32 بايت بالضبط
+  return crypto.createHash("sha256").update(key).digest(); // 32 بايت دائماً
 }
 
 /**

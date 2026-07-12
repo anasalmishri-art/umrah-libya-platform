@@ -4,12 +4,13 @@ import { getCurrentUser } from "@/lib/auth";
 import { createOrderMessages } from "@/lib/auto-messages";
 import bcrypt from "bcryptjs";
 import {
-  rateLimit,
   getClientIP,
   isValidEmail,
   isValidPhone,
   sanitizeText,
 } from "@/lib/security";
+import { checkRateLimit } from "@/lib/rate-limit-redis";
+import { isIPBanned } from "@/lib/audit-log";
 
 // GET: list orders (admin: all, company: their own, customer: their own)
 export async function GET(req: NextRequest) {
@@ -59,13 +60,23 @@ export async function GET(req: NextRequest) {
 // POST: create a new order (customer or guest)
 export async function POST(req: NextRequest) {
   try {
-    // ===== Rate Limiting =====
+    // ===== Rate Limiting (Redis) =====
     const ip = getClientIP(req);
-    const limit = rateLimit(`order:${ip}`, 10, 60 * 60 * 1000); // 10 طلبات في الساعة
-    if (!limit.allowed) {
+
+    // التحقق من حظر IP
+    const banCheck = await isIPBanned(ip);
+    if (banCheck.banned) {
+      return NextResponse.json(
+        { error: `تم حظر عنوان IP الخاص بك. السبب: ${banCheck.reason}` },
+        { status: 403 }
+      );
+    }
+
+    const rateLimitResult = await checkRateLimit("order", ip);
+    if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: "تم تجاوز عدد الطلبات المسموح. حاول لاحقاً" },
-        { status: 429 }
+        { status: 429, headers: { "Retry-After": "3600" } }
       );
     }
 

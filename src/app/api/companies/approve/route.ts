@@ -11,10 +11,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { companyId, action } = body; // action: APPROVED | REJECTED | SUSPENDED
-
-    if (!companyId || !action) {
-      return NextResponse.json({ error: "بيانات ناقصة" }, { status: 400 });
+    const { companyId, action } = body;
+    // التحقق من صحة action (منع أي قيمة أخرى)
+    const validActions = ["APPROVED", "REJECTED", "SUSPENDED"];
+    if (!companyId || !action || !validActions.includes(action)) {
+      return NextResponse.json({ error: "بيانات ناقصة أو غير صحيحة" }, { status: 400 });
     }
 
     const company = await db.company.update({
