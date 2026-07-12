@@ -3,6 +3,13 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { createOrderMessages } from "@/lib/auto-messages";
 import bcrypt from "bcryptjs";
+import {
+  rateLimit,
+  getClientIP,
+  isValidEmail,
+  isValidPhone,
+  sanitizeText,
+} from "@/lib/security";
 
 // GET: list orders (admin: all, company: their own, customer: their own)
 export async function GET(req: NextRequest) {
@@ -16,7 +23,14 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
 
     const where: any = {};
-    if (status) where.status = status;
+    if (status) {
+      // التحقق من صحة قيمة الـ status
+      const validStatuses = ["PENDING_PAYMENT", "PAID", "CANCELLED", "COMPLETED"];
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({ error: "حالة غير صحيحة" }, { status: 400 });
+      }
+      where.status = status;
+    }
 
     if (user.role === "SUPER_ADMIN") {
       // all orders
@@ -45,6 +59,16 @@ export async function GET(req: NextRequest) {
 // POST: create a new order (customer or guest)
 export async function POST(req: NextRequest) {
   try {
+    // ===== Rate Limiting =====
+    const ip = getClientIP(req);
+    const limit = rateLimit(`order:${ip}`, 10, 60 * 60 * 1000); // 10 طلبات في الساعة
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "تم تجاوز عدد الطلبات المسموح. حاول لاحقاً" },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const {
       packageId,
@@ -55,8 +79,33 @@ export async function POST(req: NextRequest) {
       notes,
     } = body;
 
+    // ===== التحقق من الحقول المطلوبة =====
     if (!packageId || !customerName || !customerPhone) {
       return NextResponse.json({ error: "البيانات الأساسية مطلوبة" }, { status: 400 });
+    }
+
+    // ===== التحقق من صحة المدخلات =====
+    if (typeof packageId !== "string" || packageId.length > 100) {
+      return NextResponse.json({ error: "معرف الباقة غير صحيح" }, { status: 400 });
+    }
+
+    const cleanName = sanitizeText(customerName, 100);
+    if (cleanName.length < 3) {
+      return NextResponse.json({ error: "الاسم قصير جداً" }, { status: 400 });
+    }
+
+    if (!isValidPhone(customerPhone)) {
+      return NextResponse.json({ error: "رقم الهاتف غير صحيح" }, { status: 400 });
+    }
+
+    if (customerEmail && !isValidEmail(customerEmail)) {
+      return NextResponse.json({ error: "البريد الإلكتروني غير صحيح" }, { status: 400 });
+    }
+
+    // التحقق من عدد الأشخاص
+    const persons = parseInt(numPersons) || 1;
+    if (persons < 1 || persons > 20) {
+      return NextResponse.json({ error: "عدد الأشخاص غير صحيح (1-20)" }, { status: 400 });
     }
 
     const pkg = await db.package.findUnique({
@@ -81,14 +130,14 @@ export async function POST(req: NextRequest) {
         customerId = existingUser.id;
       } else {
         // Auto-create a customer account with random password
-        const randomPassword = Math.random().toString(36).slice(-8);
-        const hashedPassword = await bcrypt.hash(randomPassword, 10);
+        const randomPassword = Math.random().toString(36).slice(-12) + "A1!"; // كلمة مرور قوية
+        const hashedPassword = await bcrypt.hash(randomPassword, 12);
         const newCustomer = await db.user.create({
           data: {
             email: customerEmail.toLowerCase(),
             password: hashedPassword,
-            name: customerName,
-            phone: customerPhone,
+            name: cleanName,
+            phone: sanitizeText(customerPhone, 20),
             role: "CUSTOMER",
           },
         });
@@ -96,7 +145,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const totalPrice = pkg.price * (parseInt(numPersons) || 1);
+    const totalPrice = pkg.price * persons;
     const orderNumber = `UMR-${Date.now().toString().slice(-8)}`;
 
     const order = await db.order.create({
@@ -105,11 +154,11 @@ export async function POST(req: NextRequest) {
         packageId: pkg.id,
         companyId: pkg.companyId,
         customerId,
-        customerName,
-        customerPhone,
-        customerEmail,
-        numPersons: parseInt(numPersons) || 1,
-        notes,
+        customerName: cleanName,
+        customerPhone: sanitizeText(customerPhone, 20),
+        customerEmail: customerEmail ? customerEmail.toLowerCase() : null,
+        numPersons: persons,
+        notes: notes ? sanitizeText(notes, 500) : null,
         totalPrice,
         currency: pkg.currency,
         status: "PENDING_PAYMENT",
@@ -123,7 +172,7 @@ export async function POST(req: NextRequest) {
 
     // Create auto messages for the customer
     if (customerId) {
-      await createOrderMessages(order.id, customerId, customerName, customerPhone, order);
+      await createOrderMessages(order.id, customerId, cleanName, customerPhone, order);
     }
 
     return NextResponse.json({ success: true, order });
