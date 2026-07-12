@@ -11,6 +11,7 @@ import { useAppStore } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { MessageCircle, User, Phone, Mail, Users, FileText, CheckCircle2, ArrowLeft } from "lucide-react";
 import { getCurrencySymbol } from "@/lib/currency";
+import { buildSecureWhatsAppUrl } from "@/lib/whatsapp-security";
 
 export function OrderModal() {
   const { authModal, selectedPackageForOrder, closeModals } = useAppStore();
@@ -67,34 +68,25 @@ export function OrderModal() {
     }
   };
 
-  const buildWhatsAppMessage = (order: any) => {
-    const msg = `السلام عليكم ورحمة الله،
-
-أرغب في حجز باقة العمرة التالية:
-
-📦 *رقم الطلب:* ${order.orderNumber}
-🕌 *الباقة:* ${pkg.title}
-🏢 *الشركة:* ${order.company.name}
-📅 *المدة:* ${pkg.durationDays} أيام
-
-👤 *بيانات العميل:*
-- الاسم: ${form.customerName}
-- الهاتف: ${form.customerPhone}
-${form.customerEmail ? `- البريد: ${form.customerEmail}` : ""}
-- عدد الأشخاص: ${form.numPersons}
-
-💰 *الإجمالي:* ${order.totalPrice.toLocaleString()} ${getCurrencySymbol(order.currency)}
-${form.notes ? `\n📝 *ملاحظات:* ${form.notes}` : ""}
-
-أرجو تأكيد الحجز وطريقة الدفع. شكراً لكم.`;
-
-    return encodeURIComponent(msg);
-  };
-
   const openWhatsApp = (order: any) => {
-    const phone = (order.company.whatsapp || order.company.phone || "").replace(/[^0-9]/g, "");
-    const message = buildWhatsAppMessage(order);
-    window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
+    const phone = order.company.whatsapp || order.company.phone || "";
+
+    // استخدام نظام واتساب الآمن مع HMAC
+    const whatsappUrl = buildSecureWhatsAppUrl({
+      phone,
+      orderNumber: order.orderNumber,
+      customerName: form.customerName,
+      customerPhone: form.customerPhone,
+      packageTitle: pkg.title,
+      companyName: order.company.name,
+      durationDays: pkg.durationDays,
+      numPersons: parseInt(form.numPersons) || 1,
+      totalPrice: order.totalPrice,
+      currency: getCurrencySymbol(order.currency),
+      notes: form.notes || undefined,
+    });
+
+    window.open(whatsappUrl, "_blank");
     closeModals();
     setSuccessOrder(null);
     setForm({ customerName: "", customerPhone: "", customerEmail: "", numPersons: "1", notes: "" });

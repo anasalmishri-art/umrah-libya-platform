@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -174,4 +174,68 @@ model Setting {
   key             String   @unique
   value           String
   updatedAt       DateTime @updatedAt
+}
+
+// ============= Login Attempts (Audit Log - #3) =============
+model LoginAttempt {
+  id              String   @id @default(cuid())
+  email           String?
+  ip              String
+  userAgent       String?
+  success         Boolean
+  failureReason   String?
+  country         String?
+  city            String?
+  createdAt       DateTime @default(now())
+
+  @@index([ip])
+  @@index([email])
+  @@index([createdAt])
+}
+
+// ============= Banned IPs (Auto IP Ban - #4) =============
+model BannedIP {
+  id              String   @id @default(cuid())
+  ip              String   @unique
+  reason          String
+  attemptCount    Int      @default(0)
+  bannedUntil     DateTime
+  bannedPermanently Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([ip])
+  @@index([bannedUntil])
+}
+
+// ============= File Uploads (Secure File Upload - #7) =============
+model FileUpload {
+  id              String   @id @default(cuid())
+  filename        String   // الاسم الجديد العشوائي
+  originalName    String   // الاسم الأصلي
+  mimeType        String
+  size            Int      // بالبايت
+  url             String   // رابط الوصول
+  uploadedById    String?  // معرف المستخدم الذي رفع الملف
+  purpose         String   // logo, package_pdf, etc.
+  virusScanned    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([uploadedById])
+}
+
+// ============= Security Events (للمراقبة الأمنية) =============
+model SecurityEvent {
+  id              String   @id @default(cuid())
+  type            String   // LOGIN_BLOCKED, IP_BANNED, SUSPICIOUS_ACTIVITY, etc.
+  severity        String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  ip              String?
+  userId          String?
+  description     String
+  metadata        String?  // JSON
+  createdAt       DateTime @default(now())
+
+  @@index([type])
+  @@index([severity])
+  @@index([createdAt])
 }
