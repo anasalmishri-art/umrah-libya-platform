@@ -17,12 +17,13 @@ import {
   Building2, Package, ShoppingCart, Users, TrendingUp, Settings, CheckCircle2,
   XCircle, Clock, DollarSign, Tag, Plus, Edit, Trash2, Star, Phone, Mail,
   LayoutDashboard, FileText, Calendar, ArrowRight, AlertCircle, BadgeCheck,
-  Sparkles, UserPlus, KeyRound, Copy, ImageIcon, FileImage,
+  Sparkles, UserPlus, KeyRound, Copy, ImageIcon, FileImage, Shield,
+  Activity, Ban, AlertTriangle, Eye, RefreshCw, Lock,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrencySymbol } from "@/lib/currency";
 
-type TabKey = "overview" | "companies" | "packages" | "orders" | "promotions" | "featured" | "cms" | "settings";
+type TabKey = "overview" | "companies" | "packages" | "orders" | "promotions" | "featured" | "security" | "cms" | "settings";
 
 export function AdminDashboard() {
   const [tab, setTab] = useState<TabKey>("overview");
@@ -41,7 +42,7 @@ export function AdminDashboard() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 md:grid-cols-8 h-auto">
+        <TabsList className="grid w-full grid-cols-5 md:grid-cols-9 h-auto">
           <TabsTrigger value="overview" className="flex flex-col items-center gap-1 py-2 text-[11px] md:text-sm">
             <LayoutDashboard className="h-4 w-4" />
             <span>نظرة</span>
@@ -66,6 +67,10 @@ export function AdminDashboard() {
             <Sparkles className="h-4 w-4" />
             <span>التمييز</span>
           </TabsTrigger>
+          <TabsTrigger value="security" className="flex flex-col items-center gap-1 py-2 text-[11px] md:text-sm">
+            <Shield className="h-4 w-4" />
+            <span>الأمان</span>
+          </TabsTrigger>
           <TabsTrigger value="cms" className="flex flex-col items-center gap-1 py-2 text-[11px] md:text-sm">
             <Edit className="h-4 w-4" />
             <span>المحتوى</span>
@@ -82,6 +87,7 @@ export function AdminDashboard() {
         <TabsContent value="orders"><OrdersTab /></TabsContent>
         <TabsContent value="promotions"><PromotionsTab /></TabsContent>
         <TabsContent value="featured"><FeaturedTab /></TabsContent>
+        <TabsContent value="security"><SecurityTab /></TabsContent>
         <TabsContent value="cms"><CMSTab /></TabsContent>
         <TabsContent value="settings"><SettingsTab /></TabsContent>
       </Tabs>
@@ -1420,4 +1426,457 @@ function StatusBadge({ status }: { status: string }) {
   };
   const s = map[status] || { label: status, class: "bg-muted text-muted-foreground" };
   return <Badge className={`${s.class} border`} variant="outline">{s.label}</Badge>;
+}
+
+// ============= SECURITY TAB - قسم الأمان الشامل =============
+function SecurityTab() {
+  const { toast } = useToast();
+  const [subTab, setSubTab] = useState<"overview" | "logins" | "banned" | "events" | "health">("overview");
+  const [days, setDays] = useState("7");
+  const [refreshing, setRefreshing] = useState(false);
+  const [setupModal, setSetupModal] = useState(false);
+  const [setupResult, setSetupResult] = useState<any>(null);
+
+  const { data, loading, refetch } = useFetch<{ success: boolean; stats: any; recentLogins: any[]; bannedIPs: any[]; securityEvents: any[]; lastHealthCheck: any }>(
+    `/api/admin/security-report?days=${days}`
+  );
+
+  const refresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+    toast({ title: "تم تحديث البيانات" });
+  };
+
+  const runSetup = async (currentPassword: string) => {
+    try {
+      const res = await fetch("/api/admin/setup-security", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error);
+      setSetupResult(result);
+      toast({ title: "تم إعداد الأمان بنجاح!" });
+      refetch();
+    } catch (e: any) {
+      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const unbanIP = async (ip: string) => {
+    try {
+      const res = await fetch("/api/admin/banned-ips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "unban", ip }),
+      });
+      if (!res.ok) throw new Error("فشل");
+      toast({ title: "تم إلغاء حظر IP" });
+      refetch();
+    } catch (e: any) {
+      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    }
+  };
+
+  if (loading) return <Skeleton className="h-96" />;
+  if (!data) return null;
+
+  const stats = data.stats;
+
+  return (
+    <div className="space-y-4">
+      {/* الرأس */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {[
+            { key: "overview", label: "نظرة عامة", icon: Shield },
+            { key: "logins", label: "سجل الدخول", icon: Lock },
+            { key: "banned", label: "IPs محظورة", icon: Ban },
+            { key: "events", label: "الأحداث الأمنية", icon: AlertTriangle },
+            { key: "health", label: "الفحص اليومي", icon: Activity },
+          ].map((t) => (
+            <Button
+              key={t.key}
+              variant={subTab === t.key ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSubTab(t.key as any)}
+            >
+              <t.icon className="ml-1 h-4 w-4" />
+              {t.label}
+            </Button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={days} onValueChange={setDays}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">24 ساعة</SelectItem>
+              <SelectItem value="7">7 أيام</SelectItem>
+              <SelectItem value="30">30 يوم</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing}>
+            <RefreshCw className={`ml-1 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            تحديث
+          </Button>
+          <Button size="sm" onClick={() => setSetupModal(true)} className="bg-primary">
+            <KeyRound className="ml-1 h-4 w-4" />
+            إعداد الأمان
+          </Button>
+        </div>
+      </div>
+
+      {/* ===== نظرة عامة ===== */}
+      {subTab === "overview" && (
+        <div className="space-y-4">
+          {/* بطاقات الإحصائيات */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <SecurityStatCard
+              icon={Lock}
+              label="محاولات الدخول"
+              value={stats.loginAttempts.total}
+              sub={`${stats.loginAttempts.successful} ناجحة، ${stats.loginAttempts.failed} فاشلة`}
+              color="bg-blue-100 text-blue-700"
+            />
+            <SecurityStatCard
+              icon={Ban}
+              label="IPs محظورة"
+              value={stats.bannedIPs.active}
+              sub={`${stats.bannedIPs.total} إجمالي، ${stats.bannedIPs.permanent} دائم`}
+              color="bg-red-100 text-red-700"
+            />
+            <SecurityStatCard
+              icon={AlertTriangle}
+              label="أحداث أمنية"
+              value={stats.securityEvents.total}
+              sub={`${stats.securityEvents.critical} حرج، ${stats.securityEvents.high} عالي`}
+              color="bg-amber-100 text-amber-700"
+            />
+            <SecurityStatCard
+              icon={Activity}
+              label="آخر 24 ساعة"
+              value={stats.loginAttempts.last24h}
+              sub="محاولة دخول"
+              color="bg-green-100 text-green-700"
+            />
+          </div>
+
+          {/* آخر فحص يومي */}
+          {data.lastHealthCheck && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-primary" />
+                  آخر فحص يومي للموقع
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-sm font-medium">{data.lastHealthCheck.description}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(data.lastHealthCheck.date).toLocaleString("ar")}
+                    </div>
+                  </div>
+                </div>
+                {data.lastHealthCheck.metadata && (
+                  <div className="bg-secondary/30 rounded-lg p-3 text-xs font-mono mt-2" dir="ltr">
+                    {data.lastHealthCheck.metadata}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* نصيحة أمنية */}
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <Shield className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-800">
+                  <strong className="block mb-1">💡 نصائح أمنية:</strong>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>راجع محاولات الدخول الفاشلة بانتظام</li>
+                    <li>احذف أي IP محظور بالخطأ من قسم "IPs محظورة"</li>
+                    <li>تفقد الأحداث الأمنية الحرجة فور ظهورها</li>
+                    <li>الفحص اليومي يعمل تلقائياً كل 24 ساعة منتصف الليل</li>
+                    <li>اضغط "إعداد الأمان" لإنشاء أدمن جديد وحذف الحسابات التجريبية</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ===== سجل الدخول ===== */}
+      {subTab === "logins" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">سجل محاولات الدخول ({data.recentLogins.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              {data.recentLogins.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  لا توجد محاولات دخول في هذه الفترة
+                </div>
+              ) : (
+                data.recentLogins.map((log: any) => (
+                  <div key={log.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-full ${log.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                        {log.success ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">{log.email || "غير معروف"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          IP: {log.ip} • {log.failureReason || "نجح"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(log.createdAt).toLocaleString("ar")}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== IPs المحظورة ===== */}
+      {subTab === "banned" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">عناوين IP المحظورة ({data.bannedIPs.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              {data.bannedIPs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  لا توجد IPs محظورة حالياً ✅
+                </div>
+              ) : (
+                data.bannedIPs.map((ban: any) => (
+                  <div key={ban.id} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div>
+                      <div className="text-sm font-mono font-bold" dir="ltr">{ban.ip}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {ban.reason} • {ban.attemptCount} محاولة
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        ينتهي: {new Date(ban.bannedUntil).toLocaleString("ar")}
+                        {ban.bannedPermanently && " (دائم)"}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => unbanIP(ban.ip)}
+                      className="border-green-300 text-green-700 hover:bg-green-50"
+                    >
+                      إلغاء الحظر
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== الأحداث الأمنية ===== */}
+      {subTab === "events" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">الأحداث الأمنية ({data.securityEvents.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              {data.securityEvents.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  لا توجد أحداث أمنية في هذه الفترة ✅
+                </div>
+              ) : (
+                data.securityEvents.map((event: any) => (
+                  <div key={event.id} className={`p-3 rounded-lg border ${
+                    event.severity === "CRITICAL" ? "bg-red-50 border-red-200" :
+                    event.severity === "HIGH" ? "bg-orange-50 border-orange-200" :
+                    event.severity === "MEDIUM" ? "bg-amber-50 border-amber-200" :
+                    "bg-blue-50 border-blue-200"
+                  }`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <Badge className={`text-[10px] ${
+                          event.severity === "CRITICAL" ? "bg-red-600" :
+                          event.severity === "HIGH" ? "bg-orange-600" :
+                          event.severity === "MEDIUM" ? "bg-amber-600" :
+                          "bg-blue-600"
+                        } text-white`}>
+                          {event.severity}
+                        </Badge>
+                        <span className="text-xs font-mono">{event.type}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(event.createdAt).toLocaleString("ar")}
+                      </span>
+                    </div>
+                    <div className="text-sm">{event.description}</div>
+                    {event.ip && <div className="text-xs text-muted-foreground mt-1">IP: {event.ip}</div>}
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== الفحص اليومي ===== */}
+      {subTab === "health" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              تقرير الفحص اليومي
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {data.lastHealthCheck ? (
+              <div className="space-y-3">
+                <div className="bg-secondary/30 rounded-lg p-4">
+                  <div className="text-sm font-medium mb-1">{data.lastHealthCheck.description}</div>
+                  <div className="text-xs text-muted-foreground">
+                    📅 {new Date(data.lastHealthCheck.date).toLocaleString("ar")}
+                  </div>
+                </div>
+                {data.lastHealthCheck.metadata && (
+                  <div className="bg-secondary/30 rounded-lg p-3 text-xs font-mono" dir="ltr">
+                    {data.lastHealthCheck.metadata}
+                  </div>
+                )}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                  ℹ️ الفحص اليومي يعمل تلقائياً كل 24 ساعة في منتصف الليل (توقيت جرينتش).
+                  يتم فحص: قاعدة البيانات، الأمان، الشركات، الطلبات، المتغيرات البيئية.
+                  يتم الاحتفاظ بالتقارير لمدة 30 يوماً.
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Activity className="h-12 w-12 mx-auto mb-3 opacity-40" />
+                <p>لم يُنفّذ الفحص اليومي بعد</p>
+                <p className="text-xs mt-1">سيبدأ تلقائياً في منتصف الليل القادم</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ===== مودال إعداد الأمان ===== */}
+      {setupModal && (
+        <SecuritySetupModal
+          onClose={() => { setSetupModal(false); setSetupResult(null); }}
+          onRun={runSetup}
+          result={setupResult}
+        />
+      )}
+    </div>
+  );
+}
+
+function SecurityStatCard({ icon: Icon, label, value, sub, color }: { icon: any; label: string; value: number; sub: string; color: string }) {
+  return (
+    <Card className="border-border/60">
+      <CardContent className="p-4">
+        <div className={`inline-flex h-10 w-10 items-center justify-center rounded-lg mb-2 ${color}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="text-2xl font-extrabold">{value}</div>
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-[10px] text-muted-foreground/70 mt-1">{sub}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SecuritySetupModal({ onClose, onRun, result }: { onClose: () => void; onRun: (pwd: string) => void; result: any }) {
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleRun = async () => {
+    setLoading(true);
+    await onRun(password);
+    setLoading(false);
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-primary flex items-center gap-2">
+            <KeyRound className="h-5 w-5" />
+            إعداد الأمان
+          </DialogTitle>
+          <DialogDescription>
+            إنشاء أدمن جديد بكلمة مرور قوية وحذف الحسابات التجريبية
+          </DialogDescription>
+        </DialogHeader>
+
+        {result ? (
+          <div className="space-y-3">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <div className="text-sm font-bold text-green-800 mb-1">✅ تم بنجاح!</div>
+              <div className="text-xs text-green-700">{result.message}</div>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="text-xs font-bold text-amber-800 mb-2">🔐 بيانات الدخول الجديدة:</div>
+              <div className="space-y-1 text-sm">
+                <div><strong>البريد:</strong> <span dir="ltr">{result.newCredentials.email}</span></div>
+                <div><strong>كلمة المرور:</strong> <span dir="ltr" className="font-mono">{result.newCredentials.password}</span></div>
+              </div>
+              <div className="text-xs text-amber-700 mt-2">⚠️ {result.newCredentials.warning}</div>
+            </div>
+            {result.results && (
+              <div className="bg-secondary/30 rounded-lg p-3 text-xs space-y-1 max-h-40 overflow-y-auto">
+                {result.results.map((r: string, i: number) => (
+                  <div key={i}>{r}</div>
+                ))}
+              </div>
+            )}
+            <Button onClick={onClose} className="w-full">تم</Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+              ⚠️ <strong>تحذير:</strong> سيتم:
+              <ul className="list-disc list-inside mt-1 space-y-0.5">
+                <li>حذف حساب الأدمن القديم (admin@umrah.ly)</li>
+                <li>إنشاء أدمن جديد بكلمة مرور قوية</li>
+                <li>حذف كل الحسابات التجريبية</li>
+                <li>حذف الشركات التجريبية (test, tt)</li>
+              </ul>
+            </div>
+            <div>
+              <Label className="mb-1.5">كلمة مرور الأدمن الحالية (admin123)</Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="admin123"
+                dir="ltr"
+              />
+            </div>
+            <Button onClick={handleRun} disabled={loading || !password} className="w-full bg-primary">
+              {loading ? "جارٍ التنفيذ..." : "تنفيذ إعداد الأمان"}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
