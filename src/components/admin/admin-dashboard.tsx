@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFetch } from "@/hooks/use-fetch";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { useAppStore } from "@/lib/store";
 import {
   Building2, Package, ShoppingCart, Users, TrendingUp, Settings, CheckCircle2,
@@ -248,6 +249,26 @@ function CompaniesTab() {
     }
   };
 
+  const handleDeleteCompany = async (company: any) => {
+    if (!confirm(`⚠️ هل أنت متأكد من حذف "${company.name}" نهائياً؟\n\nسيتم حذف:\n- الشركة\n- جميع باقاتها\n- جميع طلباتها\n- حساب المستخدم المرتبط بها\n\nلا يمكن التراجع عن هذا الإجراء!`)) return;
+    setActionLoading(company.id);
+    try {
+      const res = await fetch("/api/admin/delete-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: company.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast({ title: "تم حذف الشركة نهائياً", description: data.message });
+      refetchPending(); refetchApproved(); refetchAll();
+    } catch (e: any) {
+      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const list = subTab === "PENDING" ? pendingData?.companies : subTab === "APPROVED" ? approvedData?.companies : allData?.companies;
 
   return (
@@ -348,6 +369,17 @@ function CompaniesTab() {
                       إعادة التفعيل
                     </Button>
                   )}
+                  {/* زر حذف نهائي - لكل الشركات */}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDeleteCompany(c)}
+                    disabled={actionLoading === c.id}
+                    className="text-destructive hover:bg-destructive/10"
+                    title="حذف الشركة نهائياً مع كل باقاتها وطلباتها"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -1359,10 +1391,21 @@ function CMSTab() {
 // ============= SETTINGS =============
 function SettingsTab() {
   const { data, loading } = useFetch<{ settings: any }>("/api/settings");
+  const { user } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [form, setForm] = useState({
     whatsapp_number: "",
+  });
+
+  // نموذج تعديل بيانات الأدمن
+  const [profileForm, setProfileForm] = useState({
+    currentPassword: "",
+    newEmail: "",
+    newPassword: "",
+    newName: "",
+    newPhone: "",
   });
 
   useEffect(() => {
@@ -1370,6 +1413,18 @@ function SettingsTab() {
       setForm({ whatsapp_number: data.settings.whatsapp_number || "" });
     }
   }, [data]);
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        currentPassword: "",
+        newEmail: user.email,
+        newPassword: "",
+        newName: user.name,
+        newPhone: user.phone || "",
+      });
+    }
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1389,26 +1444,144 @@ function SettingsTab() {
     }
   };
 
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profileForm.currentPassword) {
+      toast({ title: "خطأ", description: "أدخل كلمة المرور الحالية", variant: "destructive" });
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const res = await fetch("/api/admin/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: profileForm.currentPassword,
+          newEmail: profileForm.newEmail !== user?.email ? profileForm.newEmail : undefined,
+          newPassword: profileForm.newPassword || undefined,
+          newName: profileForm.newName !== user?.name ? profileForm.newName : undefined,
+          newPhone: profileForm.newPhone !== user?.phone ? profileForm.newPhone : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast({ title: "تم تحديث البيانات", description: data.note });
+      setProfileForm({ ...profileForm, currentPassword: "", newPassword: "" });
+      if (data.note) {
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 3000);
+      }
+    } catch (e: any) {
+      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   if (loading) return <Skeleton className="h-64" />;
 
   return (
-    <Card className="max-w-2xl">
-      <CardHeader>
-        <CardTitle className="text-base">إعدادات عامة</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label className="mb-1.5">رقم واتساب الرئيسي</Label>
-            <Input dir="ltr" value={form.whatsapp_number} onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })} className="text-right" />
-            <p className="text-xs text-muted-foreground mt-1">يُستخدم للتواصل العام والاستفسارات</p>
-          </div>
-          <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90">
-            {saving ? "جارٍ الحفظ..." : "حفظ"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      {/* ===== قسم تعديل بيانات الأدمن ===== */}
+      <Card className="max-w-2xl border-primary/30">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <KeyRound className="h-5 w-5 text-primary" />
+            بيانات حساب الأدمن
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">عدّل بيانات دخولك (البريد، كلمة المرور، الاسم، الهاتف)</p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleProfileSubmit} className="space-y-4">
+            <div>
+              <Label className="mb-1.5">كلمة المرور الحالية * (للتأكيد)</Label>
+              <Input
+                type="password"
+                required
+                dir="ltr"
+                value={profileForm.currentPassword}
+                onChange={(e) => setProfileForm({ ...profileForm, currentPassword: e.target.value })}
+                className="text-right"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5">البريد الإلكتروني</Label>
+                <Input
+                  type="email"
+                  dir="ltr"
+                  value={profileForm.newEmail}
+                  onChange={(e) => setProfileForm({ ...profileForm, newEmail: e.target.value })}
+                  className="text-right"
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5">الاسم</Label>
+                <Input
+                  value={profileForm.newName}
+                  onChange={(e) => setProfileForm({ ...profileForm, newName: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1.5">رقم الهاتف</Label>
+                <Input
+                  dir="ltr"
+                  value={profileForm.newPhone}
+                  onChange={(e) => setProfileForm({ ...profileForm, newPhone: e.target.value })}
+                  className="text-right"
+                  placeholder="+218 91XXX XXX"
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5">كلمة المرور الجديدة (اتركها فارغة إذا لا تريد تغييرها)</Label>
+                <Input
+                  type="password"
+                  dir="ltr"
+                  value={profileForm.newPassword}
+                  onChange={(e) => setProfileForm({ ...profileForm, newPassword: e.target.value })}
+                  className="text-right"
+                  placeholder="••••••••"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">8 أحرف على الأقل، حروف + أرقام</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+              ⚠️ إذا غيّرت كلمة المرور أو البريد، سيتم تسجيل خروجك تلقائياً بعد 3 ثوانٍ.
+            </div>
+
+            <Button type="submit" disabled={savingProfile} className="bg-primary hover:bg-primary/90">
+              {savingProfile ? "جارٍ الحفظ..." : "حفظ التغييرات"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* ===== الإعدادات العامة ===== */}
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <CardTitle className="text-base">إعدادات عامة</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label className="mb-1.5">رقم واتساب الرئيسي</Label>
+              <Input dir="ltr" value={form.whatsapp_number} onChange={(e) => setForm({ ...form, whatsapp_number: e.target.value })} className="text-right" />
+              <p className="text-xs text-muted-foreground mt-1">يُستخدم للتواصل العام والاستفسارات</p>
+            </div>
+            <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90">
+              {saving ? "جارٍ الحفظ..." : "حفظ"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
